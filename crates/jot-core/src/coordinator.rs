@@ -338,6 +338,11 @@ impl DictationCoordinator {
         meta.target_app_name = context.target_app_name.clone();
         meta.write(&folder);
 
+        // Open the connection now, while the user is still drawing breath. It
+        // is the one part of the upload that can be paid for early.
+        let transcription = self.deps.transcription.clone();
+        crate::runtime::spawn(async move { transcription.warm().await });
+
         let mut capture = (self.deps.audio_factory)();
         self.install_capture_callbacks(capture.as_mut());
 
@@ -1057,10 +1062,15 @@ mod tests {
     struct ScriptedService {
         response: Mutex<Option<Result<TranscriptionResult, TranscriptionError>>>,
         calls: Arc<AtomicUsize>,
+        warmups: Arc<AtomicUsize>,
     }
 
     #[async_trait]
     impl TranscriptionServicing for ScriptedService {
+        async fn warm(&self) {
+            self.warmups.fetch_add(1, Ordering::SeqCst);
+        }
+
         async fn transcribe(
             &self,
             _audio: &Path,
@@ -1085,6 +1095,7 @@ mod tests {
         coordinator: Arc<DictationCoordinator>,
         calls: Arc<AtomicUsize>,
         discarded: Arc<AtomicUsize>,
+        warmups: Arc<AtomicUsize>,
     }
 
     fn harness(
@@ -1099,6 +1110,7 @@ mod tests {
 
         let calls = Arc::new(AtomicUsize::new(0));
         let discarded = Arc::new(AtomicUsize::new(0));
+        let warmups = Arc::new(AtomicUsize::new(0));
         let result = capture.result.clone();
         let start_error = capture.start_error.clone();
         let levels = capture.levels.clone();
@@ -1117,6 +1129,7 @@ mod tests {
             transcription: Arc::new(ScriptedService {
                 response: Mutex::new(response),
                 calls: calls.clone(),
+                warmups: warmups.clone(),
             }),
             insertion: Arc::new(FakeInserter::with_outcome(insertion)),
             context_provider: Box::new(DictationContext::default),
@@ -1136,6 +1149,7 @@ mod tests {
             coordinator,
             calls,
             discarded,
+            warmups,
         }
     }
 
@@ -1433,6 +1447,37 @@ mod tests {
             harness.coordinator.last_silence_reason(),
             SilenceReason::NoSpeech
         );
+    }
+
+    #[tokio::test]
+    async fn recording_opens_the_connection_before_there_is_anything_to_send() {
+        let harness = harness(
+            FakeCapture::default(),
+            None,
+            InsertionOutcome::Inserted,
+            false,
+        );
+        harness.coordinator.handle(HotkeyIntent::Begin);
+        settle().await;
+        assert_eq!(
+            harness.warmups.load(Ordering::SeqCst),
+            1,
+            "the TLS handshake belongs in the time the user spends speaking"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_refused_session_opens_no_connection() {
+        // A password field has focus, so there will be no upload to warm for.
+        let harness = harness(
+            FakeCapture::default(),
+            None,
+            InsertionOutcome::Inserted,
+            true,
+        );
+        harness.coordinator.handle(HotkeyIntent::Begin);
+        settle().await;
+        assert_eq!(harness.warmups.load(Ordering::SeqCst), 0);
     }
 
     #[tokio::test]

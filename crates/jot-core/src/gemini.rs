@@ -103,6 +103,29 @@ impl GeminiClient {
         Self { http, api_key }
     }
 
+    /// Opens a connection to `endpoint` before there is anything to send.
+    ///
+    /// A dictation pays for a TLS handshake it did not have to: the pooled
+    /// connection from the previous one has long since idled out, so the
+    /// handshake lands between letting go of the key and the transcript coming
+    /// back, where the user is watching. Called when recording starts, it
+    /// happens while they are still speaking instead.
+    ///
+    /// The reply is discarded on purpose. Any answer at all — including the 404
+    /// this HEAD will usually get — means the socket is in the pool, and a
+    /// warm-up that failed must never surface as a dictation error.
+    pub async fn warm(&self, endpoint: &str) {
+        if let Err(error) = self
+            .http
+            .head(endpoint)
+            .timeout(crate::timeout::CONNECT)
+            .send()
+            .await
+        {
+            tracing::debug!(%error, "connection warm-up did not complete");
+        }
+    }
+
     /// Audio-only request on the legacy `:generateContent` transport.
     ///
     /// The transcribe models ignore prompts, and `audioTranscriptionConfig.

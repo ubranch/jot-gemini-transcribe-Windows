@@ -79,6 +79,11 @@ pub trait TranscriptionServicing: Send + Sync {
         duration: Duration,
         context: &DictationContext,
     ) -> Result<TranscriptionResult, TranscriptionError>;
+
+    /// Opens the connection a transcript will travel over, before there is one.
+    ///
+    /// A no-op by default so tests and fakes need not care.
+    async fn warm(&self) {}
 }
 
 /// Vocabulary is suppressed once it has PROVABLY broken a request.
@@ -305,6 +310,15 @@ impl GeminiTranscriptionService {
 
 #[async_trait]
 impl TranscriptionServicing for GeminiTranscriptionService {
+    async fn warm(&self) {
+        if !self.client.has_api_key() {
+            return;
+        }
+        self.client
+            .warm(&self.settings.get().gemini_config().endpoint)
+            .await;
+    }
+
     async fn transcribe(
         &self,
         audio_path: &Path,
