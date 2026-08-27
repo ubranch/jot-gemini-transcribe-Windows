@@ -94,9 +94,13 @@ try {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
 
     $signature = (Get-AuthenticodeSignature $exe).Status
+    # The winget manifest needs this, and computing it by hand is a step people
+    # get wrong quietly.
+    $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash
     Write-Host ''
     Write-Host "Staged:  $stage"
     Write-Host "Zip:     $zip"
+    Write-Host "SHA256:  $hash"
     Write-Host "Signed:  $signature"
     Write-Host ''
     Write-Host 'Jot is portable: it needs no installer, keeps its data in'
