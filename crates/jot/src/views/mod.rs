@@ -107,7 +107,7 @@ pub fn open_dictionary(services: &Services, cx: &mut App) {
         "dictionary",
         "Jot Dictionary",
         640.0,
-        620.0,
+        540.0,
         cx,
         move |_, cx| cx.new(|cx| dictionary::DictionaryView::new(services, cx)),
     );
@@ -126,7 +126,7 @@ pub fn open_onboarding(services: &Services, cx: &mut App) {
 }
 
 pub fn open_about(cx: &mut App) {
-    open_tool_window("about", "About Jot", 440.0, 420.0, cx, |_, cx| {
+    open_tool_window("about", "About Jot", 440.0, 340.0, cx, |_, cx| {
         cx.new(AboutView::new)
     });
 }
@@ -138,6 +138,7 @@ pub fn open_about(cx: &mut App) {
 /// Gemini API stays something the user asked for.
 pub struct AboutView {
     update: UpdateState,
+    scroll: widgets::PageScroll,
 }
 
 enum UpdateState {
@@ -176,6 +177,7 @@ impl AboutView {
 
         Self {
             update: UpdateState::Checking,
+            scroll: widgets::PageScroll::new(),
         }
     }
 
@@ -239,6 +241,7 @@ impl Render for AboutView {
         widgets::page(
             "about",
             theme,
+            &self.scroll,
             vec![
                 div()
                     .id("heading")

@@ -58,6 +58,7 @@ pub struct OnboardingView {
     checking: bool,
     /// Set once a dictation actually completes while this window is open.
     tried_it: bool,
+    scroll: widgets::PageScroll,
     _subscriptions: Vec<gpui::Subscription>,
 }
 
@@ -112,6 +113,7 @@ impl OnboardingView {
             status: None,
             checking: false,
             tried_it: false,
+            scroll: widgets::PageScroll::new(),
             _subscriptions: vec![subscription],
         }
     }
@@ -357,6 +359,7 @@ impl Render for OnboardingView {
         widgets::page(
             "onboarding",
             theme,
+            &self.scroll,
             vec![
                 div()
                     .id("heading")

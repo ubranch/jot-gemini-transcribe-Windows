@@ -48,6 +48,7 @@ pub struct SettingsView {
     /// Mirrors the registry so the switch shows what the machine actually does,
     /// not what we last asked for.
     autostart_enabled: bool,
+    scroll: widgets::PageScroll,
 }
 
 impl SettingsView {
@@ -94,6 +95,7 @@ impl SettingsView {
             advanced_status: None,
             confirming_delete_all: false,
             autostart_enabled: crate::autostart::is_enabled(),
+            scroll: widgets::PageScroll::new(),
         }
     }
 
@@ -591,6 +593,7 @@ impl Render for SettingsView {
         widgets::page(
             "settings",
             theme,
+            &self.scroll,
             vec![
                 div()
                     .id("heading")

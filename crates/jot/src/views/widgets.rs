@@ -21,9 +21,12 @@
 
 use crate::theme::{self, Theme};
 use gpui::{
-    AnyElement, ClickEvent, Div, ElementId, Rgba, Role, SharedString, Stateful, Window, div,
-    prelude::*, px, relative, rgba,
+    AnyElement, Bounds, ClickEvent, Div, ElementId, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    Pixels, Rgba, Role, ScrollHandle, SharedString, Stateful, Window, canvas, div, fill, point,
+    prelude::*, px, relative, rgba, size,
 };
+use std::cell::Cell;
+use std::rc::Rc;
 
 pub fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     rgba(
@@ -289,24 +292,210 @@ pub fn field_row(
 }
 
 /// The shell every tool window shares: background, font, padding, scroll.
-pub fn page(id: impl Into<ElementId>, theme: Theme, children: Vec<AnyElement>) -> impl IntoElement {
+/// A page's scroll position, owned by the view that renders the page.
+///
+/// GPUI keeps the offset for you, but it will not tell you about it unless you
+/// hand it a handle, and [`page`] needs the numbers to draw a scrollbar.
+#[derive(Clone, Default)]
+pub struct PageScroll {
+    handle: ScrollHandle,
+    /// Distance from the top of the thumb to the pointer when the drag began.
+    /// Without it the thumb jumps so its top meets the cursor on first move.
+    grab: Rc<Cell<Option<Pixels>>>,
+}
+
+impl PageScroll {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+/// Widths chosen so the bar is visible against a dark surface without becoming
+/// the loudest thing on a settings page.
+mod scrollbar {
+    use gpui::{Pixels, px};
+
+    pub const LANE: Pixels = px(12.0);
+    pub const THUMB: Pixels = px(6.0);
+    /// A thumb shorter than this is hard to see and impossible to grab, however
+    /// long the content is.
+    pub const MIN_THUMB: Pixels = px(32.0);
+}
+
+pub fn page(
+    id: impl Into<ElementId>,
+    theme: Theme,
+    scroll: &PageScroll,
+    children: Vec<AnyElement>,
+) -> impl IntoElement {
     let mut column = div()
         .id(id)
         .role(Role::ScrollView)
         .size_full()
         .overflow_y_scroll()
+        .track_scroll(&scroll.handle)
         .flex()
         .flex_col()
         .gap(theme::spacing::M)
         .p(theme::spacing::L)
         .font_family(theme::ui_font())
         .line_height(relative(theme::line_height::BODY))
-        .bg(theme.window_background)
         .text_color(theme.on_surface);
     for child in children {
         column = column.child(child);
     }
-    column
+
+    // The scrolling column and the bar are siblings inside a positioned parent:
+    // an absolutely positioned child *inside* the scroll container would scroll
+    // away with the content it is supposed to describe.
+    div()
+        .relative()
+        .size_full()
+        .bg(theme.window_background)
+        .child(column)
+        .child(scrollbar(scroll, theme))
+}
+
+/// The scroll position indicator.
+///
+/// GPUI ships no scrollbar element, so this one is painted by hand. It reads
+/// the handle during paint rather than during render, which matters: the
+/// scrolling sibling has already been laid out by then, so the bar is correct
+/// on the very first frame instead of appearing one frame late.
+///
+/// It draws nothing at all when the content fits. A page that cannot scroll
+/// should not carry furniture that says it can.
+fn scrollbar(scroll: &PageScroll, theme: Theme) -> impl IntoElement {
+    let handle = scroll.handle.clone();
+    let grab = scroll.grab.clone();
+
+    let painter = {
+        let handle = handle.clone();
+        canvas(
+            move |bounds, _, _| bounds,
+            move |_, bounds: Bounds<Pixels>, window, _| {
+                let Some(thumb) = thumb_bounds(&handle, bounds) else {
+                    return;
+                };
+                window.paint_quad(
+                    fill(thumb, with_alpha(theme.on_surface_variant, 0.55))
+                        .corner_radii(scrollbar::THUMB / 2.0),
+                );
+            },
+        )
+        .size_full()
+    };
+
+    let drag_handle = handle.clone();
+    let drag_grab = grab.clone();
+    let up_grab = grab.clone();
+    let down_handle = handle.clone();
+
+    div()
+        .id("page-scrollbar")
+        .absolute()
+        .top_0()
+        .right_0()
+        .h_full()
+        .w(scrollbar::LANE)
+        .child(painter)
+        .on_mouse_down(
+            gpui::MouseButton::Left,
+            move |event: &MouseDownEvent, window, _| {
+                let bounds = lane_bounds(&down_handle);
+                if let Some(thumb) = thumb_bounds(&down_handle, bounds) {
+                    let offset = event.position.y - thumb.origin.y;
+                    // Pressing the track outside the thumb centres the thumb on the
+                    // pointer, which is what every desktop scrollbar does.
+                    grab.set(Some(if (px(0.0)..thumb.size.height).contains(&offset) {
+                        offset
+                    } else {
+                        thumb.size.height / 2.0
+                    }));
+                    scroll_to_pointer(&down_handle, bounds, event.position.y, grab.get());
+                    // Nothing in the view's state changed, so nothing would ask for
+                    // a new frame and the content would sit still under a thumb
+                    // that had already moved.
+                    window.refresh();
+                }
+            },
+        )
+        .on_mouse_move(move |event: &MouseMoveEvent, window, _| {
+            if drag_grab.get().is_some() {
+                let bounds = lane_bounds(&drag_handle);
+                scroll_to_pointer(&drag_handle, bounds, event.position.y, drag_grab.get());
+                window.refresh();
+            }
+        })
+        .on_mouse_up(gpui::MouseButton::Left, move |_: &MouseUpEvent, _, _| {
+            up_grab.set(None);
+        })
+}
+
+/// Where the bar lives, derived from the area the content scrolls inside.
+fn lane_bounds(handle: &ScrollHandle) -> Bounds<Pixels> {
+    let viewport = handle.bounds();
+    Bounds {
+        origin: point(
+            viewport.origin.x + viewport.size.width - scrollbar::LANE,
+            viewport.origin.y,
+        ),
+        size: size(scrollbar::LANE, viewport.size.height),
+    }
+}
+
+/// `None` when the content fits, which is also the signal to draw nothing.
+fn thumb_bounds(handle: &ScrollHandle, lane: Bounds<Pixels>) -> Option<Bounds<Pixels>> {
+    // The offset runs negative as the content moves up under the viewport.
+    let (top, height) =
+        thumb_geometry(lane.size.height, handle.max_offset().y, -handle.offset().y)?;
+    Some(Bounds {
+        origin: point(
+            lane.origin.x + (scrollbar::LANE - scrollbar::THUMB) / 2.0,
+            lane.origin.y + top,
+        ),
+        size: size(scrollbar::THUMB, height),
+    })
+}
+
+/// The thumb's top and height within a lane, or `None` when the content fits.
+///
+/// Split out from [`thumb_bounds`] because a [`ScrollHandle`]'s extent is only
+/// filled in by layout, so the arithmetic is untestable while it is entangled
+/// with one.
+fn thumb_geometry(
+    viewport: Pixels,
+    overflow: Pixels,
+    scrolled: Pixels,
+) -> Option<(Pixels, Pixels)> {
+    if overflow <= px(0.0) || viewport <= px(0.0) {
+        return None;
+    }
+    let height = (viewport * (viewport / (viewport + overflow))).max(scrollbar::MIN_THUMB);
+    // A thumb clamped up to the minimum would otherwise be able to travel past
+    // the bottom of its own lane.
+    let travel = (viewport - height).max(px(0.0));
+    let progress = (scrolled / overflow).clamp(0.0, 1.0);
+    Some((travel * progress, height))
+}
+
+fn scroll_to_pointer(
+    handle: &ScrollHandle,
+    lane: Bounds<Pixels>,
+    pointer: Pixels,
+    grab: Option<Pixels>,
+) {
+    let Some(thumb) = thumb_bounds(handle, lane) else {
+        return;
+    };
+    let travel = lane.size.height - thumb.size.height;
+    if travel <= px(0.0) {
+        return;
+    }
+    let grab = grab.unwrap_or(thumb.size.height / 2.0);
+    let top = (pointer - lane.origin.y - grab).clamp(px(0.0), travel);
+    let overflow = handle.max_offset().y;
+    handle.set_offset(point(handle.offset().x, -(top / travel) * overflow));
 }
 
 /// A one-line status message. `tone` decides whether it reads as neutral,
@@ -341,6 +530,45 @@ pub enum StatusTone {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn content_that_fits_gets_no_thumb() {
+        assert_eq!(thumb_geometry(px(720.0), px(0.0), px(0.0)), None);
+        assert_eq!(thumb_geometry(px(0.0), px(880.0), px(0.0)), None);
+    }
+
+    #[test]
+    fn the_thumb_is_as_tall_a_share_of_the_lane_as_the_viewport_is_of_the_content() {
+        // 720 of 1600 total is 45%, and 45% of a 720px lane is 324px.
+        let (top, height) = thumb_geometry(px(720.0), px(880.0), px(0.0)).unwrap();
+        assert_eq!(top, px(0.0), "unscrolled content starts at the top");
+        assert!((height - px(324.0)).abs() < px(0.5), "got {height:?}");
+    }
+
+    #[test]
+    fn a_fully_scrolled_page_puts_the_thumb_against_the_bottom() {
+        let lane = px(720.0);
+        let (top, height) = thumb_geometry(lane, px(880.0), px(880.0)).unwrap();
+        assert!(
+            (top + height - lane).abs() < px(0.5),
+            "got {top:?} + {height:?}"
+        );
+    }
+
+    #[test]
+    fn a_very_long_page_still_gets_a_grabbable_thumb() {
+        // Proportionally this thumb would be under 4px tall.
+        let (top, height) = thumb_geometry(px(720.0), px(200_000.0), px(200_000.0)).unwrap();
+        assert_eq!(height, scrollbar::MIN_THUMB);
+        // And the floor must not let it slide out of the lane.
+        assert!(top + height <= px(720.0), "got {top:?} + {height:?}");
+    }
+
+    #[test]
+    fn an_overscrolled_offset_does_not_push_the_thumb_out_of_the_lane() {
+        let (top, height) = thumb_geometry(px(720.0), px(880.0), px(5_000.0)).unwrap();
+        assert!(top + height <= px(720.0), "got {top:?} + {height:?}");
+    }
 
     #[test]
     fn disabled_buttons_are_dimmed_rather_than_recoloured() {
