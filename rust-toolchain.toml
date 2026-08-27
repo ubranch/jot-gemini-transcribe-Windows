@@ -1,3 +1,6 @@
 [toolchain]
 channel = "1.97.1"
 targets = ["x86_64-pc-windows-msvc"]
+# Declared here so a fresh machine — or a CI runner — installs the tools the
+# gates need instead of failing on a missing component.
+components = ["rustfmt", "clippy"]
