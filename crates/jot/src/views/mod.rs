@@ -23,6 +23,7 @@ pub mod widgets;
 
 use crate::services::Services;
 use crate::theme::{self, Theme};
+use crate::views::widgets::StatusTone;
 use gpui::{
     AnyWindowHandle, App, Bounds, Render, Role, TitlebarOptions, WindowBounds, WindowOptions, div,
     prelude::*, px, relative, size,
@@ -125,12 +126,107 @@ pub fn open_onboarding(services: &Services, cx: &mut App) {
 }
 
 pub fn open_about(cx: &mut App) {
-    open_tool_window("about", "About Jot", 440.0, 380.0, cx, |_, cx| {
-        cx.new(|_| AboutView)
+    open_tool_window("about", "About Jot", 440.0, 420.0, cx, |_, cx| {
+        cx.new(AboutView::new)
     });
 }
 
-pub struct AboutView;
+/// About, which is also where Jot asks whether it is out of date.
+///
+/// The check runs here rather than at startup on purpose: opening this window
+/// is a deliberate act, so the one request Jot makes to anything other than the
+/// Gemini API stays something the user asked for.
+pub struct AboutView {
+    update: UpdateState,
+}
+
+enum UpdateState {
+    Checking,
+    UpToDate,
+    Available(jot_core::update::Update),
+    /// GitHub was unreachable or unhappy. Worth saying, not worth retrying:
+    /// this window is not the reason anyone opened Jot.
+    Unknown,
+}
+
+impl AboutView {
+    fn new(cx: &mut gpui::Context<Self>) -> Self {
+        cx.spawn(async move |this, cx| {
+            let outcome =
+                jot_core::runtime::spawn(jot_core::update::check(env!("CARGO_PKG_VERSION"))).await;
+            let state = match outcome {
+                Ok(Ok(Some(update))) => UpdateState::Available(update),
+                Ok(Ok(None)) => UpdateState::UpToDate,
+                Ok(Err(error)) => {
+                    tracing::debug!(?error, "update check failed");
+                    UpdateState::Unknown
+                }
+                Err(error) => {
+                    tracing::debug!(?error, "update check did not run");
+                    UpdateState::Unknown
+                }
+            };
+            this.update(cx, |this, cx| {
+                this.update = state;
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+
+        Self {
+            update: UpdateState::Checking,
+        }
+    }
+
+    fn update_element(&self, theme: Theme) -> gpui::AnyElement {
+        match &self.update {
+            UpdateState::Checking => widgets::status_line(
+                "update",
+                "Checking for updates…",
+                StatusTone::Neutral,
+                theme,
+            )
+            .into_any_element(),
+            UpdateState::UpToDate => widgets::status_line(
+                "update",
+                "You are on the latest version.",
+                StatusTone::Good,
+                theme,
+            )
+            .into_any_element(),
+            UpdateState::Unknown => widgets::status_line(
+                "update",
+                "Could not reach GitHub to check for updates.",
+                StatusTone::Neutral,
+                theme,
+            )
+            .into_any_element(),
+            UpdateState::Available(update) => {
+                let page = update.page.clone();
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(widgets::status_line(
+                        "update",
+                        format!("Jot {} is available.", update.version),
+                        StatusTone::Good,
+                        theme,
+                    ))
+                    .child(widgets::hug(widgets::button(
+                        "open-release",
+                        "Open the download page",
+                        widgets::ButtonKind::Primary,
+                        true,
+                        theme,
+                        move |_, _, cx| cx.open_url(&page),
+                    )))
+                    .into_any_element()
+            }
+        }
+    }
+}
 
 impl Render for AboutView {
     fn render(
@@ -139,6 +235,7 @@ impl Render for AboutView {
         _cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
         let theme = Theme::current(window.appearance(), crate::window_shell::high_contrast());
+        let update = self.update_element(theme);
         widgets::page(
             "about",
             theme,
@@ -157,6 +254,7 @@ impl Render for AboutView {
                     .text_color(theme.on_surface_variant)
                     .child(format!("Version {}", env!("CARGO_PKG_VERSION")))
                     .into_any_element(),
+                update,
                 div()
                     .text_size(theme::type_scale::BODY)
                     .child(

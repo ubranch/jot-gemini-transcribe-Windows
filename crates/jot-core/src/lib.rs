@@ -35,5 +35,6 @@ pub mod settings;
 pub mod state_machine;
 pub mod timeout;
 pub mod transcription;
+pub mod update;
 pub mod validation;
 pub mod win32;

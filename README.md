@@ -75,8 +75,9 @@ menu mid-dictation.
   dictations queue and land when you reconnect. Release the key mid-word and it keeps listening until
   you actually stop.
 - **It is private by architecture.** Your voice goes from your PC straight to the Gemini API with
-  *your* key. No middleman server, no account, no analytics, no keystroke logging — one network host,
-  and you can read every line of the code that talks to it.
+  *your* key. No middleman server, no account, no analytics, no keystroke logging. Nothing else
+  leaves the machine unattended: the only other host Jot ever contacts is `github.com`, and only at
+  the moment you open About to ask whether there is a newer version.
 - **Your jargon, spelled right.** Names and product terms go in the Dictionary and ride along with
   the audio, so the model hears "Kubernetes" instead of guessing "cooper netties" — corrected at the
   source, not patched afterwards.
@@ -129,7 +130,8 @@ forever; transcripts stay until you delete them.
   candidate window sits against the field rather than the caret.
 - Clipboard text, HTML, RTF, file drops and images all survive a paste. GDI metafiles and palettes do
   not; they are handle-backed and cannot be copied byte-for-byte.
-- There is no update server, so new versions are a manual download.
+- There is no self-updater. About checks GitHub for a newer release when you open it and offers the
+  download page; unzipping over the old folder is still your job.
 
 </details>
 
@@ -172,7 +174,7 @@ git clone https://github.com/ubranch/jot-gemini-transcribe-Windows
 cd jot-gemini-transcribe-Windows
 cargo run -p jot            # run it straight from source
 
-cargo test                  # 198 tests, headless
+cargo test                  # 204 tests, headless
 cargo clippy --all-targets  # clean
 ./scripts/package.ps1       # release build, staged folder and zip
 ```
