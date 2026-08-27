@@ -71,8 +71,8 @@ source, not patched afterwards.
 ## Settings
 
 <p align="center">
-  <img src="./assets/readme/settings.png" width="660"
-       alt="The Settings window: dictation key picker, microphone picker, and switches for the resting indicator, start with Windows, sounds and double-tap lock.">
+  <img src="./assets/readme/settings.png" width="560"
+       alt="The Settings window: the dictation key and microphone pickers, switches for the resting indicator, start with Windows, sounds and double-tap lock, the formatting options, and the privacy section with audio retention, the API key field and a delete-everything control.">
 </p>
 
 Pick the key, pick the microphone — a device you choose is never silently swapped for another — and
