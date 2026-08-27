@@ -8,17 +8,17 @@ files only do anything once they land there as a pull request.
 
 1. Build and publish the release first: the manifest points at a download URL
    that has to already exist.
-2. Update `PackageVersion` in all three files, and `InstallerUrl`,
+2. Update `PackageVersion` in all three files under `manifests/`, and `InstallerUrl`,
    `InstallerSha256` and `ReleaseDate` in the installer manifest.
    `scripts/package.ps1` prints the SHA256 of the zip it builds.
 3. Check them locally, which catches schema mistakes before a reviewer does:
 
    ```powershell
-   winget validate --manifest packaging\winget
+   winget validate --manifest packaging\winget\manifests
    ```
 
-4. Open a pull request against `microsoft/winget-pkgs`, copying the three files
-   to `manifests/u/ubranch/Jot/<version>/`.
+4. Open a pull request against `microsoft/winget-pkgs`, copying everything in
+   `manifests/` to `manifests/u/ubranch/Jot/<version>/` there.
 
 ## Why `zip` and not `portable`
 
