@@ -4,14 +4,29 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ubranch/jot-gemini-transcribe-Windows?style=flat-square&label=release&color=4285F4&labelColor=1E1F20"></a>
+  <a href="https://github.com/ubranch/jot-gemini-transcribe-Windows/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/ubranch/jot-gemini-transcribe-Windows/total?style=flat-square&label=downloads&color=34A853&labelColor=1E1F20"></a>
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&labelColor=1E1F20">
   <img alt="Rust 1.97 with GPUI" src="https://img.shields.io/badge/Rust%20%2B%20GPUI-1.97-CE422B?style=flat-square&labelColor=1E1F20">
-  <img alt="198 tests" src="https://img.shields.io/badge/tests-198-34A853?style=flat-square&labelColor=1E1F20">
   <img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-9AA0A6?style=flat-square&labelColor=1E1F20">
 </p>
 
 <p align="center">
-  <a href="#try-it"><b>Try it</b></a> ·
+  <a href="https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/latest">
+    <img src="./assets/readme/download.svg" width="272" alt="Download for Windows">
+  </a>
+</p>
+
+<p align="center">
+  <sub>
+    Portable · no installer · 10&nbsp;MB ·
+    <a href="https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/latest">all downloads</a> ·
+    <a href="#build-it-yourself">or build from source</a>
+  </sub>
+</p>
+
+<p align="center">
+  <a href="#get-it-running"><b>Get it running</b></a> ·
   <a href="#the-three-gestures">Gestures</a> ·
   <a href="#why-it-is-different">Why it is different</a> ·
   <a href="#one-dictation-end-to-end">How it works</a> ·
@@ -23,20 +38,18 @@ Hold the dictation key, say the thing, let go. A moment later your words are in 
 already using — punctuated, filler words removed, cleaned up. No window to switch to, no transcript
 to copy, no account to make.
 
-## Try it
+## Get it running
 
-```powershell
-git clone https://github.com/ubranch/jot-gemini-transcribe-Windows
-cd jot-gemini-transcribe-Windows
-cargo run -p jot
-```
-
-Then, in about two minutes:
-
-1. **Paste a [Gemini API key](https://aistudio.google.com/apikey).** It goes into Windows Credential
+1. **Download and unzip.** Grab [the latest release](https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/latest)
+   and run `jot.exe` from the folder. SmartScreen warns because the binary is unsigned — choose
+   **More info → Run anyway**. Nothing is installed; deleting the folder uninstalls it.
+2. **Paste a [Gemini API key](https://aistudio.google.com/apikey).** It goes into Windows Credential
    Manager, never into a settings file.
-2. **Let it check your microphone.** Windows asks for permission the first time you dictate.
-3. **Hold `Right Ctrl` and talk** — anywhere you can type.
+3. **Hold `Right Ctrl` and talk** — anywhere you can type. Windows asks for microphone permission the
+   first time.
+
+That is the whole setup, and it takes about two minutes. Prefer to compile it yourself? See
+[Build it yourself](#build-it-yourself).
 
 You pay Google for what you dictate at [Gemini API pricing](https://ai.google.dev/pricing); a free
 tier exists and a typical dictation is a few seconds of audio. Jot itself is free and has no account.
@@ -155,6 +168,10 @@ without launching the app.
 Requires Windows 10 or 11 and the toolchain pinned in `rust-toolchain.toml`.
 
 ```powershell
+git clone https://github.com/ubranch/jot-gemini-transcribe-Windows
+cd jot-gemini-transcribe-Windows
+cargo run -p jot            # run it straight from source
+
 cargo test                  # 198 tests, headless
 cargo clippy --all-targets  # clean
 ./scripts/package.ps1       # release build, staged folder and zip

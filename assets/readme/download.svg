@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 326 64" role="img"
+     aria-labelledby="dlTitle" width="326" height="64">
+  <title id="dlTitle">Download Jot for Windows</title>
+
+  <defs>
+    <linearGradient id="dlFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5B95F7"/>
+      <stop offset="1" stop-color="#3B78E7"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="325" height="63" rx="14"
+        fill="url(#dlFill)" stroke="#7BAAFA" stroke-opacity="0.45"/>
+
+  <!-- The Windows four-pane mark, drawn rather than imported. -->
+  <g fill="#FFFFFF" transform="translate(30 18)">
+    <rect x="0"  y="0"  width="12" height="12" rx="1"/>
+    <rect x="15" y="0"  width="12" height="12" rx="1"/>
+    <rect x="0"  y="15" width="12" height="12" rx="1"/>
+    <rect x="15" y="15" width="12" height="12" rx="1"/>
+  </g>
+
+  <text x="72" y="39"
+        font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif"
+        font-size="20" font-weight="600" fill="#FFFFFF">Download for Windows</text>
+</svg>
