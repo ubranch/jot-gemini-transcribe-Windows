@@ -270,23 +270,47 @@ pub fn section(
     column
 }
 
-/// A row of a label and whatever control belongs beside it.
+/// A labelled control that is too wide to sit beside its label.
+///
+/// The label carries the same weight and the description the same colour as
+/// [`toggle`], deliberately: the two are stacked in the same panes, and a
+/// picker whose title looked like a caption made Settings read as two
+/// different products bolted together.
 pub fn field_row(
     label: impl Into<SharedString>,
+    description: impl Into<SharedString>,
     theme: Theme,
     control: impl IntoElement,
 ) -> impl IntoElement {
+    let description = description.into();
     div()
         .flex()
         .flex_col()
-        .gap(theme::spacing::XXS)
+        .gap(theme::spacing::XS)
+        .px(theme::spacing::XS)
         .py(theme::spacing::XS)
         .child(
             div()
-                .text_size(theme::type_scale::LABEL)
-                .line_height(relative(theme::line_height::BODY))
-                .text_color(theme.on_surface_variant)
-                .child(label.into()),
+                .flex()
+                .flex_col()
+                .gap(px(2.0))
+                .child(
+                    div()
+                        .text_size(theme::type_scale::BODY)
+                        .font_weight(theme::weight::MEDIUM)
+                        .line_height(relative(theme::line_height::TIGHT))
+                        .text_color(theme.on_surface)
+                        .child(label.into()),
+                )
+                .when(!description.is_empty(), |column| {
+                    column.child(
+                        div()
+                            .text_size(theme::type_scale::LABEL)
+                            .line_height(relative(theme::line_height::BODY))
+                            .text_color(theme.on_surface_variant)
+                            .child(description),
+                    )
+                }),
         )
         .child(control)
 }

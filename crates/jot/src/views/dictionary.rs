@@ -41,9 +41,17 @@ pub struct DictionaryView {
 
 impl DictionaryView {
     pub fn new(services: Services, cx: &mut Context<Self>) -> Self {
-        let term = cx.new(|cx| TextField::new("dictionary-term", "Kubernetes", cx));
-        let misspelling =
-            cx.new(|cx| TextField::new("dictionary-misspelling", "cooper netties (optional)", cx));
+        // Placeholders describe the field rather than showing a specimen term.
+        // "Kubernetes" and "cooper netties" read as entries already present,
+        // so there was no way to tell an empty field from a filled one.
+        let term = cx.new(|cx| TextField::new("dictionary-term", "Term, spelled correctly", cx));
+        let misspelling = cx.new(|cx| {
+            TextField::new(
+                "dictionary-misspelling",
+                "How it gets misheard (optional)",
+                cx,
+            )
+        });
         // Enter in either field adds the entry, so the whole flow is keyboard.
         let subscriptions = vec![
             cx.subscribe(&term, |this: &mut Self, _, _: &Submit, cx| this.add(cx)),

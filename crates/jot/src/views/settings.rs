@@ -268,13 +268,15 @@ impl Render for SettingsView {
             theme,
             vec![
                 widgets::field_row(
-                    "Dictation key — Windows has no fn key, so pick a bare key you never press alone",
+                    "Dictation key",
+                    "Windows has no fn key, so pick a bare key you never press alone",
                     theme,
                     hotkey_row,
                 )
                 .into_any_element(),
                 widgets::field_row(
-                    "Microphone — a device you pick is never silently swapped for another",
+                    "Microphone",
+                    "A device you pick is never silently swapped for another",
                     theme,
                     microphone_row,
                 )
@@ -441,13 +443,15 @@ impl Render for SettingsView {
                     )
                     .into_any_element(),
                 widgets::field_row(
-                    "Keep recordings for — transcripts are kept until you delete them",
+                    "Keep recordings for",
+                    "Transcripts are kept until you delete them",
                     theme,
                     retention_row,
                 )
                 .into_any_element(),
                 widgets::field_row(
-                    "Gemini API key — stored in Windows Credential Manager, never in a settings file",
+                    "Gemini API key",
+                    "Stored in Windows Credential Manager, never in a settings file",
                     theme,
                     div()
                         .flex()
@@ -476,7 +480,12 @@ impl Render for SettingsView {
                                 )),
                         )
                         .when_some(self.key_status.clone(), |column, (message, tone)| {
-                            column.child(widgets::status_line("settings-key-status", message, tone, theme))
+                            column.child(widgets::status_line(
+                                "settings-key-status",
+                                message,
+                                tone,
+                                theme,
+                            ))
                         }),
                 )
                 .into_any_element(),
@@ -548,10 +557,10 @@ impl Render for SettingsView {
                     .text_color(theme.on_surface_variant)
                     .child("Leave these empty unless a model was renamed or you are pointing Jot at a proxy.")
                     .into_any_element(),
-                widgets::field_row("API endpoint", theme, self.endpoint.clone()).into_any_element(),
-                widgets::field_row("Transcription model", theme, self.transcribe_model.clone())
+                widgets::field_row("API endpoint", "", theme, self.endpoint.clone()).into_any_element(),
+                widgets::field_row("Transcription model", "", theme, self.transcribe_model.clone())
                     .into_any_element(),
-                widgets::field_row("Tone-pass model", theme, self.cleanup_model.clone())
+                widgets::field_row("Tone-pass model", "", theme, self.cleanup_model.clone())
                     .into_any_element(),
                 widgets::toggle(
                     "legacy-endpoint",
