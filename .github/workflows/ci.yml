@@ -8,9 +8,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # Jot is a Windows application; the engine crate is where the logic lives and
-  # it is what these gates actually protect.
-  RUSTFLAGS: -D warnings
+  # Deliberately no global RUSTFLAGS: `-D warnings` there applies to every
+  # dependency too, so one warning inside GPUI would fail our build. The denial
+  # belongs on our own lint step.
 
 jobs:
   check:
@@ -30,7 +30,7 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --all-targets --locked
+        run: cargo clippy --all-targets --locked -- -D warnings
 
       - name: Tests
         run: cargo test --locked
