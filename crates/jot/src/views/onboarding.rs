@@ -23,7 +23,7 @@ use crate::services::Services;
 use crate::text_field::{Submit, TextField};
 use crate::theme::{self, Theme};
 use crate::views::widgets::{self, ButtonKind, StatusTone};
-use gpui::{Context, Entity, Role, SharedString, Window, div, prelude::*, relative};
+use gpui::{Context, Entity, Role, SharedString, Window, div, prelude::*, px, relative};
 use jot_core::audio;
 use jot_core::credentials;
 use jot_core::gemini::KeyCheck;
@@ -370,13 +370,7 @@ impl Render for OnboardingView {
                     .line_height(relative(theme::line_height::TIGHT))
                     .child("Set up Jot")
                     .into_any_element(),
-                div()
-                    .id("step-status")
-                    .role(Role::Status)
-                    .text_size(theme::type_scale::LABEL)
-                    .text_color(theme.on_surface_variant)
-                    .child(format!("Step {} of {TOTAL_STEPS}", step.index()))
-                    .into_any_element(),
+                progress(step, theme).into_any_element(),
                 body,
                 div()
                     .when_some(self.status.clone(), |row, (message, tone)| {
@@ -388,21 +382,62 @@ impl Render for OnboardingView {
                         ))
                     })
                     .into_any_element(),
-                widgets::hug(widgets::button(
-                    "later",
-                    "I'll finish this later",
-                    ButtonKind::Secondary,
-                    true,
-                    theme,
-                    cx.listener(|this, _, window, cx| {
-                        this.finish(cx);
-                        window.remove_window();
-                    }),
-                ))
-                .into_any_element(),
+                // Pushes the way out to the bottom of the window. Without it
+                // the two buttons sit a gap apart in the middle of an empty
+                // pane, which reads as an unfinished layout rather than a
+                // wizard with a footer.
+                div().flex_1().into_any_element(),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(theme::spacing::S)
+                    .child(div().h(px(1.0)).w_full().bg(theme.outline_variant))
+                    .child(widgets::hug(widgets::button(
+                        "later",
+                        "I'll finish this later",
+                        ButtonKind::Secondary,
+                        true,
+                        theme,
+                        cx.listener(|this, _, window, cx| {
+                            this.finish(cx);
+                            window.remove_window();
+                        }),
+                    )))
+                    .into_any_element(),
             ],
         )
     }
+}
+
+/// How far through setup you are, as a row of dots with the current one drawn
+/// as a pill.
+///
+/// It replaced the words "Step 2 of 4", which were accurate and completely
+/// invisible. The words survive as the accessible label, because a row of
+/// coloured rectangles says nothing to a screen reader.
+fn progress(step: Step, theme: Theme) -> impl IntoElement {
+    div()
+        .id("progress")
+        .role(Role::Status)
+        .aria_label(format!("Step {} of {TOTAL_STEPS}", step.index()))
+        .flex()
+        .items_center()
+        .gap(theme::spacing::XS)
+        .children((1..=TOTAL_STEPS).map(|index| {
+            div()
+                .h(px(6.0))
+                .w(if index == step.index() {
+                    px(24.0)
+                } else {
+                    px(6.0)
+                })
+                .rounded_full()
+                .bg(if index <= step.index() {
+                    theme.primary
+                } else {
+                    theme.outline_variant
+                })
+        }))
 }
 
 fn paragraph(text: &str, theme: Theme) -> impl IntoElement {

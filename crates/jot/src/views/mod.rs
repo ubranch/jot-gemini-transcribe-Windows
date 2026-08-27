@@ -119,7 +119,7 @@ pub fn open_onboarding(services: &Services, cx: &mut App) {
         "onboarding",
         "Set up Jot",
         620.0,
-        560.0,
+        440.0,
         cx,
         move |_, cx| cx.new(|cx| onboarding::OnboardingView::new(services, cx)),
     );
