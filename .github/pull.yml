@@ -1,0 +1,11 @@
+# Stops the "pull" app from syncing upstream into this fork.
+#
+# This repository is a Windows port written in Rust on GPUI, not a mirror of
+# google-gemini/jot-gemini-transcribe-macOS. The app's default behaviour opened
+# a pull request merging 28 files of upstream Swift into `main`, which would
+# have overwritten the port rather than updated it.
+#
+# An empty rule set means there is nothing to sync. Upstream changes are read
+# and ported deliberately, one at a time.
+version: "1"
+rules: []
