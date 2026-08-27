@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
 PackageIdentifier: ubranch.Jot
-PackageVersion: 0.2.1
+PackageVersion: 0.2.2
 PackageLocale: en-US
 Publisher: ubranch
 PublisherUrl: https://github.com/ubranch
@@ -33,6 +33,6 @@ Tags:
 - ai
 - productivity
 - accessibility
-ReleaseNotesUrl: https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/tag/v0.2.1
+ReleaseNotesUrl: https://github.com/ubranch/jot-gemini-transcribe-Windows/releases/tag/v0.2.2
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0
