@@ -24,17 +24,28 @@
 //! edit. Key events are only used for the operations an IME does not own:
 //! caret movement, deletion, select-all, copy and paste.
 //!
-//! What it still is not: a full editor. There is no undo, no click-to-position
-//! caret, and the IME candidate window is placed against the whole field rather
-//! than the caret, because nothing here measures glyph positions.
+//! What it still is not: a full editor. The IME candidate window is placed
+//! against the field rather than the caret, and there is no word-wise motion or
+//! double-click-to-select-word.
 
 use crate::theme::{self, Theme};
 use gpui::{
     Bounds, ClipboardItem, Context, ElementInputHandler, EntityInputHandler, FocusHandle,
-    Focusable, KeyDownEvent, Pixels, Point, Role, SharedString, UTF16Selection, Window, canvas,
-    div, prelude::*, px,
+    Focusable, Font, FontFeatures, FontStyle, FontWeight, KeyDownEvent, MouseDownEvent, Pixels,
+    Point, Role, SharedString, TextRun, UTF16Selection, Window, canvas, div, prelude::*, px,
 };
 use std::ops::Range;
+
+/// How many edits back a field remembers. A single-line field holds an API key
+/// or a model name, not a document, so this is generous rather than tuned.
+const UNDO_DEPTH: usize = 64;
+
+/// A restorable moment: the text and where the caret was in it.
+#[derive(Clone, PartialEq, Eq)]
+struct Snapshot {
+    content: String,
+    selection: Range<usize>,
+}
 
 /// Emitted when the user presses Enter.
 pub struct Submit;
@@ -53,8 +64,14 @@ pub struct TextField {
     /// Renders as bullets and never reaches the clipboard through this field.
     pub masked: bool,
     pub focus_handle: FocusHandle,
-    /// Captured at paint so the IME candidate window has somewhere to go.
+    /// Captured at paint so the IME candidate window has somewhere to go, and
+    /// so a click can be turned into a caret position.
     last_bounds: Option<Bounds<Pixels>>,
+    undo: Vec<Snapshot>,
+    redo: Vec<Snapshot>,
+    /// True while a run of single characters is being typed, so that a word
+    /// undoes as a word instead of one letter per press.
+    coalescing: bool,
 }
 
 impl gpui::EventEmitter<Submit> for TextField {}
@@ -80,6 +97,9 @@ impl TextField {
             masked: false,
             focus_handle: cx.focus_handle(),
             last_bounds: None,
+            undo: Vec::new(),
+            redo: Vec::new(),
+            coalescing: false,
         }
     }
 
@@ -96,6 +116,11 @@ impl TextField {
         self.content = text.into();
         self.selection = self.content.len()..self.content.len();
         self.marked = None;
+        // Filling a field from settings is not an edit the user made, so there
+        // is nothing for them to undo back past.
+        self.undo.clear();
+        self.redo.clear();
+        self.coalescing = false;
     }
 
     pub fn take_content(&mut self) -> String {
@@ -144,6 +169,64 @@ impl TextField {
 
     // ----- Editing
 
+    /// Records the current text so the next edit can be undone.
+    ///
+    /// `coalesce` groups a run of single typed characters into one undo step:
+    /// undoing a word one letter at a time is technically correct and nobody
+    /// wants it. Anything else — a paste, a deletion, a replaced selection —
+    /// breaks the run and becomes its own step.
+    fn checkpoint(&mut self, coalesce: bool) {
+        if coalesce && self.coalescing {
+            return;
+        }
+        let snapshot = Snapshot {
+            content: self.content.clone(),
+            selection: self.selection.clone(),
+        };
+        if self.undo.last() != Some(&snapshot) {
+            self.undo.push(snapshot);
+            if self.undo.len() > UNDO_DEPTH {
+                self.undo.remove(0);
+            }
+        }
+        // A fresh edit starts a new branch of history, so anything undone past
+        // this point can no longer be redone.
+        self.redo.clear();
+        self.coalescing = coalesce;
+    }
+
+    fn undo(&mut self) {
+        let Some(previous) = self.undo.pop() else {
+            return;
+        };
+        self.redo.push(self.snapshot());
+        self.restore(previous);
+    }
+
+    fn redo(&mut self) {
+        let Some(next) = self.redo.pop() else {
+            return;
+        };
+        self.undo.push(self.snapshot());
+        self.restore(next);
+    }
+
+    fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            content: self.content.clone(),
+            selection: self.selection.clone(),
+        }
+    }
+
+    fn restore(&mut self, snapshot: Snapshot) {
+        self.content = snapshot.content;
+        let end = self.content.len();
+        self.selection = snapshot.selection.start.min(end)..snapshot.selection.end.min(end);
+        // An in-flight composition describes text that no longer exists.
+        self.marked = None;
+        self.coalescing = false;
+    }
+
     /// Replaces `range` with `text` and leaves the caret after it.
     ///
     /// A single-line field: newlines become spaces rather than silently
@@ -159,6 +242,7 @@ impl TextField {
     }
 
     fn delete_backwards(&mut self) {
+        self.checkpoint(false);
         if self.selection.start != self.selection.end {
             let range = self.selection.clone();
             self.replace(range, "");
@@ -172,6 +256,7 @@ impl TextField {
     }
 
     fn delete_forwards(&mut self) {
+        self.checkpoint(false);
         if self.selection.start != self.selection.end {
             let range = self.selection.clone();
             self.replace(range, "");
@@ -209,6 +294,59 @@ impl TextField {
             .map_or(from, |character| from + character.len_utf8())
     }
 
+    /// Turns a click into a caret position.
+    ///
+    /// The text is re-shaped with the same font and size it was painted with,
+    /// so the boundary this lands on is the one under the pointer rather than a
+    /// guess from an average character width. Masked fields shape their bullets
+    /// instead, and the answer is mapped back through the character count —
+    /// a bullet is three bytes and the key behind it usually is not.
+    fn caret_from_click(&self, at: Point<Pixels>, window: &Window) -> Option<usize> {
+        let bounds = self.last_bounds?;
+        let visible = self.rendered(0..self.content.len());
+        if visible.is_empty() {
+            return Some(0);
+        }
+        let font = Font {
+            family: if self.masked {
+                theme::mono_font()
+            } else {
+                theme::ui_font()
+            },
+            features: FontFeatures::default(),
+            fallbacks: None,
+            weight: FontWeight::NORMAL,
+            style: FontStyle::Normal,
+        };
+        let size = theme::type_scale::BODY;
+        let run = TextRun {
+            len: visible.len(),
+            font,
+            color: gpui::black(),
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+        };
+        let line = window.text_system().shape_line(
+            SharedString::from(visible.clone()),
+            size,
+            &[run],
+            None,
+        );
+
+        // `last_bounds` is the field's box; the text starts one horizontal
+        // padding in.
+        let x = at.x - bounds.origin.x - theme::spacing::S;
+        let index = line.closest_index_for_x(x.max(px(0.0)));
+        let characters = visible[..index.min(visible.len())].chars().count();
+        Some(
+            self.content
+                .char_indices()
+                .nth(characters)
+                .map_or(self.content.len(), |(offset, _)| offset),
+        )
+    }
+
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let keystroke = &event.keystroke;
         let modifiers = keystroke.modifiers;
@@ -217,11 +355,17 @@ impl TextField {
             match keystroke.key.as_str() {
                 "v" => {
                     if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+                        self.checkpoint(false);
                         let range = self.selection.clone();
                         self.replace(range, &text);
                     }
                 }
                 "a" => self.selection = 0..self.content.len(),
+                "z" if modifiers.shift => self.redo(),
+                "z" => self.undo(),
+                // Windows' other redo binding. Supporting one and not the other
+                // reads as a missing feature to whoever learned the other one.
+                "y" => self.redo(),
                 // Never from a masked field: the API key does not leave here.
                 "c" if self.selection.start != self.selection.end && !self.masked => {
                     let selected = self.content[self.selection.clone()].to_string();
@@ -319,6 +463,10 @@ impl EntityInputHandler for TextField {
             Some(range) => self.byte_range(range),
             None => self.marked.clone().unwrap_or(self.selection.clone()),
         };
+        // One character landing on a caret is typing and coalesces; a longer
+        // string is a committed composition or a platform paste, and is not.
+        let typing = text.chars().count() == 1 && range.start == range.end;
+        self.checkpoint(typing);
         self.replace(range, text);
         cx.notify();
     }
@@ -335,6 +483,12 @@ impl EntityInputHandler for TextField {
             Some(range) => self.byte_range(range),
             None => self.marked.clone().unwrap_or(self.selection.clone()),
         };
+        // Only the start of a composition is worth remembering: every keystroke
+        // inside one rewrites the same marked run, and each would otherwise
+        // become its own undo step.
+        if self.marked.is_none() {
+            self.checkpoint(false);
+        }
         let sanitized = new_text.replace(['\n', '\r'], " ");
         let range = range.start.min(self.content.len())..range.end.min(self.content.len());
         self.content.replace_range(range.clone(), &sanitized);
@@ -451,8 +605,13 @@ impl Render for TextField {
             .on_key_down(cx.listener(Self::on_key_down))
             .on_mouse_down(
                 gpui::MouseButton::Left,
-                cx.listener(|this, _, window, cx| {
+                cx.listener(|this, event: &MouseDownEvent, window, cx| {
                     this.focus_handle.focus(window, cx);
+                    if let Some(caret) = this.caret_from_click(event.position, window) {
+                        this.selection = caret..caret;
+                        this.coalescing = false;
+                    }
+                    cx.notify();
                 }),
             )
             .flex()
@@ -478,23 +637,41 @@ impl Render for TextField {
             // Installs the platform input handler for the next frame. This is
             // the only place text can arrive from, so it has to happen on every
             // paint while focused.
-            .child(canvas(
-                move |bounds, _, _| bounds,
-                move |bounds, _, window, cx| {
-                    entity.update(cx, |field, _| field.last_bounds = Some(bounds));
-                    window.handle_input(
-                        &focus_handle,
-                        ElementInputHandler::new(bounds, entity.clone()),
-                        cx,
-                    );
-                },
-            ))
+            .relative()
+            .child(
+                canvas(
+                    move |bounds, _, _| bounds,
+                    move |bounds, _, window, cx| {
+                        entity.update(cx, |field, _| field.last_bounds = Some(bounds));
+                        window.handle_input(
+                            &focus_handle,
+                            ElementInputHandler::new(bounds, entity.clone()),
+                            cx,
+                        );
+                    },
+                )
+                // Absolute so measuring the field costs it no layout space: an
+                // in-flow canvas would take width from the text beside it.
+                .absolute()
+                .top_0()
+                .left_0()
+                .size_full(),
+            )
             .child(if empty {
                 div()
+                    .flex()
+                    .items_center()
                     .flex_1()
                     .overflow_hidden()
-                    .text_color(theme.on_surface_variant)
-                    .child(self.placeholder.clone())
+                    // A focused empty field drew no caret at all, because the
+                    // placeholder branch never reached the run loop. Clicking a
+                    // field and seeing nothing change reads as a dead control.
+                    .when(focused, |row| row.child(caret(theme)))
+                    .child(
+                        div()
+                            .text_color(theme.on_surface_variant)
+                            .child(self.placeholder.clone()),
+                    )
                     .into_any_element()
             } else {
                 runs.flex_1()
@@ -522,6 +699,114 @@ mod tests {
 
     fn field(cx: &mut TestAppContext) -> gpui::Entity<TextField> {
         cx.new(|cx| TextField::new("test-field", "placeholder", cx))
+    }
+
+    /// What typing a word actually looks like: one character at a time through
+    /// the platform input handler.
+    fn type_text(
+        field: &mut TextField,
+        text: &str,
+        window: &mut Window,
+        cx: &mut Context<TextField>,
+    ) {
+        for character in text.chars() {
+            field.replace_text_in_range(None, &character.to_string(), window, cx);
+        }
+    }
+
+    #[gpui::test]
+    fn a_typed_word_undoes_as_a_word(cx: &mut TestAppContext) {
+        let field = field(cx);
+        let window = cx.add_window(|_, _| gpui::Empty);
+        cx.update_window(window.into(), |_, window, cx| {
+            field.update(cx, |field, cx| {
+                type_text(field, "hello", window, cx);
+                assert_eq!(field.content(), "hello");
+                field.undo();
+                assert_eq!(field.content(), "", "five keystrokes are one edit");
+                field.redo();
+                assert_eq!(field.content(), "hello");
+            });
+        })
+        .unwrap();
+    }
+
+    #[gpui::test]
+    fn a_deletion_is_its_own_step(cx: &mut TestAppContext) {
+        let field = field(cx);
+        let window = cx.add_window(|_, _| gpui::Empty);
+        cx.update_window(window.into(), |_, window, cx| {
+            field.update(cx, |field, cx| {
+                type_text(field, "abc", window, cx);
+                field.delete_backwards();
+                assert_eq!(field.content(), "ab");
+                field.undo();
+                assert_eq!(field.content(), "abc", "the delete undoes on its own");
+                field.undo();
+                assert_eq!(field.content(), "", "and the typing behind it");
+            });
+        })
+        .unwrap();
+    }
+
+    #[gpui::test]
+    fn editing_after_an_undo_drops_the_redo(cx: &mut TestAppContext) {
+        let field = field(cx);
+        let window = cx.add_window(|_, _| gpui::Empty);
+        cx.update_window(window.into(), |_, window, cx| {
+            field.update(cx, |field, cx| {
+                type_text(field, "one", window, cx);
+                field.undo();
+                type_text(field, "two", window, cx);
+                field.redo();
+                assert_eq!(field.content(), "two", "the abandoned branch is gone");
+            });
+        })
+        .unwrap();
+    }
+
+    #[gpui::test]
+    fn undo_on_an_untouched_field_does_nothing(cx: &mut TestAppContext) {
+        let field = field(cx);
+        field.update(cx, |field, _| {
+            field.undo();
+            field.redo();
+            assert_eq!(field.content(), "");
+        });
+    }
+
+    #[gpui::test]
+    fn loading_a_value_leaves_nothing_to_undo_back_past(cx: &mut TestAppContext) {
+        let field = field(cx);
+        let window = cx.add_window(|_, _| gpui::Empty);
+        cx.update_window(window.into(), |_, window, cx| {
+            field.update(cx, |field, cx| {
+                // Settings fills the field, then the user edits it.
+                field.set_content("gemini-3.5-flash-lite");
+                type_text(field, "X", window, cx);
+                field.undo();
+                assert_eq!(field.content(), "gemini-3.5-flash-lite");
+                field.undo();
+                assert_eq!(
+                    field.content(),
+                    "gemini-3.5-flash-lite",
+                    "undo must not empty a field the user never emptied"
+                );
+            });
+        })
+        .unwrap();
+    }
+
+    #[gpui::test]
+    fn history_is_bounded(cx: &mut TestAppContext) {
+        let field = field(cx);
+        field.update(cx, |field, _| {
+            for index in 0..(UNDO_DEPTH * 2) {
+                field.checkpoint(false);
+                field.content.push_str(&index.to_string());
+            }
+            assert_eq!(field.undo.len(), UNDO_DEPTH);
+        });
     }
 
     #[gpui::test]

@@ -126,8 +126,9 @@ forever; transcripts stay until you delete them.
 <br>
 
 - The text fields support IME composition, so Chinese, Japanese, Korean and Vietnamese input compose
-  and commit correctly — but they are not a full editor. No undo, no click-to-position caret, and the
-  candidate window sits against the field rather than the caret.
+  and commit correctly, and they undo, redo and take a caret from a click — but they are not a full
+  editor. No word-wise motion, no double-click to select a word, and the IME candidate window sits
+  against the field rather than the caret.
 - Clipboard text, HTML, RTF, file drops and images all survive a paste. GDI metafiles and palettes do
   not; they are handle-backed and cannot be copied byte-for-byte.
 - There is no self-updater. About checks GitHub for a newer release when you open it and offers the
