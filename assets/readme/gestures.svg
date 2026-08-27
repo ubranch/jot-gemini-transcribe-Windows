@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 316" role="img"
+     aria-labelledby="gTitle gDesc" width="1200" height="316">
+  <title id="gTitle">The three gestures</title>
+  <desc id="gDesc">Hold Right Ctrl to talk and release to place the text at your cursor.
+  Hold it and tap Space for hands-free, then press the key again to finish. Esc cancels,
+  and anything over ten seconds is still kept in History.</desc>
+
+  <defs>
+    <clipPath id="gRound"><rect width="1200" height="316" rx="20"/></clipPath>
+    <g id="keyShadow"><rect y="4" rx="11" fill="#0A0B0C"/></g>
+  </defs>
+
+  <g clip-path="url(#gRound)">
+    <rect width="1200" height="316" fill="#0E0F11"/>
+
+    <!-- 1 · hold -->
+    <g transform="translate(64 0)">
+      <rect x="0" y="60" width="164" height="62" rx="12" fill="#111214"/>
+      <rect x="0" y="52" width="164" height="62" rx="12" fill="#232528" stroke="#4A4E52"/>
+      <text x="82" y="90" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Consolas, Menlo, monospace"
+            font-size="22" fill="#E8EAED">Right Ctrl</text>
+
+      <text x="0" y="176" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="26" font-weight="600" fill="#F1F3F4">Hold it and talk</text>
+      <text x="0" y="212" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">Records while held. Let go and</text>
+      <text x="0" y="240" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">the text lands at your cursor.</text>
+      <rect x="0" y="266" width="52" height="3" rx="1.5" fill="#4285F4"/>
+    </g>
+
+    <!-- 2 · lock -->
+    <g transform="translate(432 0)">
+      <rect x="0" y="60" width="164" height="62" rx="12" fill="#111214"/>
+      <rect x="0" y="52" width="164" height="62" rx="12" fill="#232528" stroke="#4A4E52"/>
+      <text x="82" y="90" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Consolas, Menlo, monospace"
+            font-size="22" fill="#E8EAED">Right Ctrl</text>
+
+      <text x="184" y="92" text-anchor="middle"
+            font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="24" fill="#6B7075">+</text>
+
+      <rect x="212" y="60" width="118" height="62" rx="12" fill="#111214"/>
+      <rect x="212" y="52" width="118" height="62" rx="12" fill="#232528" stroke="#4A4E52"/>
+      <text x="271" y="90" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Consolas, Menlo, monospace"
+            font-size="22" fill="#E8EAED">Space</text>
+
+      <text x="0" y="176" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="26" font-weight="600" fill="#F1F3F4">Tap Space to lock</text>
+      <text x="0" y="212" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">Hands-free. Keeps recording</text>
+      <text x="0" y="240" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">until you press the key again.</text>
+      <rect x="0" y="266" width="52" height="3" rx="1.5" fill="#A8C7FA"/>
+    </g>
+
+    <!-- 3 · cancel -->
+    <g transform="translate(800 0)">
+      <rect x="0" y="60" width="86" height="62" rx="12" fill="#111214"/>
+      <rect x="0" y="52" width="86" height="62" rx="12" fill="#232528" stroke="#4A4E52"/>
+      <text x="43" y="90" text-anchor="middle"
+            font-family="ui-monospace, SFMono-Regular, Consolas, Menlo, monospace"
+            font-size="22" fill="#E8EAED">Esc</text>
+
+      <text x="0" y="176" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="26" font-weight="600" fill="#F1F3F4">Changed your mind</text>
+      <text x="0" y="212" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">Cancels. Anything over ten</text>
+      <text x="0" y="240" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+            font-size="20" fill="#9AA0A6">seconds is still kept in History.</text>
+      <rect x="0" y="266" width="52" height="3" rx="1.5" fill="#5F6368"/>
+    </g>
+  </g>
+  <rect x="0.5" y="0.5" width="1199" height="315" rx="20" fill="none" stroke="#2A2C2F"/>
+</svg>
