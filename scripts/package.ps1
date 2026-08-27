@@ -36,21 +36,37 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-    $cargo = if ($Toolchain) { @("+$Toolchain") } else { @() }
+    # Every cargo call builds one complete argument array and splats it whole.
+    # Anything cleverer breaks: a PowerShell function's parameter binder eats
+    # cargo's `-p` and `--`, and splatting a partial array ahead of literal
+    # arguments hands rustup an empty toolchain name.
+    # [string[]] matters: a bare `if` returning a one-element array unrolls it to
+    # a string, and `$prefix + $rest` would then concatenate text instead of
+    # building an argument list.
+    [string[]]$prefix = if ($Toolchain) { @("+$Toolchain") } else { @() }
+    function Get-CargoArgv([string[]]$Rest) { $script:prefix + $Rest }
 
     Write-Host 'Checking formatting, lints and tests before building…'
-    & cargo @cargo fmt --all --check
+
+    $argv = Get-CargoArgv @('fmt', '--all', '--check')
+    & cargo @argv
     if ($LASTEXITCODE -ne 0) { throw 'cargo fmt --check failed' }
-    & cargo @cargo clippy --all-targets -- -D warnings
+
+    $argv = Get-CargoArgv @('clippy', '--all-targets', '--locked', '--', '-D', 'warnings')
+    & cargo @argv
     if ($LASTEXITCODE -ne 0) { throw 'clippy failed' }
-    & cargo @cargo test
+
+    $argv = Get-CargoArgv @('test', '--locked')
+    & cargo @argv
     if ($LASTEXITCODE -ne 0) { throw 'tests failed' }
 
     Write-Host 'Building release…'
-    & cargo @cargo build --release -p jot --locked
+    $argv = Get-CargoArgv @('build', '--release', '-p', 'jot', '--locked')
+    & cargo @argv
     if ($LASTEXITCODE -ne 0) { throw 'release build failed' }
 
-    $manifest = & cargo @cargo metadata --no-deps --format-version 1 | ConvertFrom-Json
+    $argv = Get-CargoArgv @('metadata', '--no-deps', '--format-version', '1')
+    $manifest = & cargo @argv | ConvertFrom-Json
     $version = ($manifest.packages | Where-Object { $_.name -eq 'jot' }).version
     $exe = Join-Path $root 'target/release/jot.exe'
     if (-not (Test-Path $exe)) { throw "missing $exe" }
