@@ -1,179 +1,144 @@
-<div align="center">
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%"
+       alt="Jot for Windows — hold a key, speak, and the text lands at your cursor. Saying &quot;let's meet at 1pm — actually, no, make it 2pm&quot; types &quot;Let's meet at 2 PM.&quot;">
+</p>
 
-<img src="docs/images/icon.png" width="128" alt="Jot">
+<p align="center">
+  <img alt="Platform: Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&labelColor=1E1F20">
+  <img alt="Built with Rust and GPUI" src="https://img.shields.io/badge/Rust%20%2B%20GPUI-1.97-CE422B?style=flat-square&labelColor=1E1F20">
+  <img alt="198 tests" src="https://img.shields.io/badge/tests-198-34A853?style=flat-square&labelColor=1E1F20">
+  <img alt="Apache 2.0 licensed" src="https://img.shields.io/badge/license-Apache--2.0-9AA0A6?style=flat-square&labelColor=1E1F20">
+</p>
 
-# Jot
+> A Windows port of [Jot](https://github.com/google-gemini/jot-gemini-transcribe-macOS) by Ammaar Reshi,
+> rewritten in Rust on [GPUI](https://www.gpui.rs). Not an officially supported Google product.
 
-**[Gemini 3.5 Transcribe](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) Demo. Hold a key. Speak. It types.**
+Hold the dictation key, say the thing, let go. A moment later your words are in the app you were
+already using — punctuated, filler words removed, cleaned up. No window to switch to, no transcript
+to copy, no account to make.
 
-Smart dictation for macOS that puts polished text wherever your cursor is.
+## Try it
 
-<sub>Created by [Ammaar Reshi](https://x.com/ammaar) · Apache 2.0 licensed</sub>
+```powershell
+git clone https://github.com/ubranch/jot-gemini-transcribe-Windows
+cd jot-gemini-transcribe-Windows
+cargo run -p jot
+```
 
-</div>
+Setup takes about two minutes: paste a [Gemini API key](https://aistudio.google.com/apikey), let it
+check your microphone, then hold **Right Ctrl** anywhere you can type.
 
-This is not an officially supported Google product.
+You pay Google for what you dictate at [Gemini API pricing](https://ai.google.dev/pricing) — a free
+tier exists and a typical dictation is a few seconds of audio. Jot itself is free and has no account.
 
----
-
-## What it is
-
-Hold `fn`, say the thing, let go. A moment later your words are in the app you
-were already using — punctuated, filler words removed, cleaned up. No window to switch
-to, no transcript to copy, no account to make.
-
-<img width="640" height="294" alt="Jot preview" src="https://github.com/user-attachments/assets/669efea9-dbfe-4174-a8fe-748aab818f14" />
-
-
-It is deliberately small: a menu bar icon, a pill at the bottom of your screen
-while you talk, and a History window that proves nothing was ever lost.
-
-## The three gestures
+## Three gestures
 
 | Gesture | What happens |
 | --- | --- |
-| **Hold `fn`** | Records while held. Release and the text lands at your cursor. |
-| **`fn` + tap `Space`** | Hands-free: keeps recording after you let go. Tap `fn` to finish. |
+| **Hold the key** | Records while held. Release and the text lands at your cursor. |
+| **Hold it, tap `Space`** | Hands-free. Press the key again to finish. |
 | **`Esc`** | Cancels. Anything over 10 seconds is still kept in History. |
 
-The key is rebindable in Settings → General if `fn` is spoken for.
+Windows has no `fn` key — it is handled in keyboard firmware and never reaches a low-level hook — so
+the default is **Right Ctrl**. Right Alt, Right Shift, Right Win and Caps Lock are also available.
+Caps Lock and Right Win are swallowed while bound, so neither toggles shift-lock nor opens the Start
+menu mid-dictation.
 
-## What makes it different
+## Why it is different
 
-**It follows a change of mind.** Say *"let's meet at 1pm — actually, no, make it
-2pm"* and Jot writes **"Let's meet at 2pm."** That is the whole pitch, and
-onboarding makes you do it once so you believe it.
+**It follows a change of mind.** That is the whole pitch, and setup makes you do it once so you
+believe it.
 
-**It never loses your words.** Audio goes to disk from the first millisecond, so
-a crash, a `kill -9`, or a flat battery costs you nothing — the recording is
-recovered on next launch. Offline, dictations queue and land when you reconnect.
-Every failure is retryable from History. Release the key mid-word and it keeps
-listening until you actually stop.
+**It never loses your words.** Audio goes to disk from the first millisecond and the WAV header is
+rewritten every second, so a crash, a `taskkill`, or a flat battery costs you nothing — the recording
+is recovered on next launch. Offline, dictations queue and land when you reconnect. Release the key
+mid-word and it keeps listening until you actually stop.
 
-**It is private by architecture.** Your voice goes from your Mac straight to the
-Gemini API with *your* key. No middleman server, no account, no analytics, no
-screenshots, no keystroke logging — one network host, and you can read every
-line of the code that talks to it. See [PRIVACY.md](docs/PRIVACY.md).
+**It is private by architecture.** Your voice goes from your PC straight to the Gemini API with
+*your* key, which lives in Windows Credential Manager and never in a settings file. No middleman
+server, no account, no analytics, no keystroke logging — one network host, and you can read every
+line of the code that talks to it.
 
-**Your jargon, spelled right.** Names and product terms go in the Dictionary and
-ride along with the audio, so the model hears "Kubernetes" instead of guessing
-"cooper netties" — corrected at the source, not patched afterwards. Tone matching for
-email vs. chat vs. code is available too, in Settings → Dictation.
+**Your jargon, spelled right.** Names and product terms go in the Dictionary and ride along with the
+audio, so the model hears "Kubernetes" instead of guessing "cooper netties" — corrected at the
+source, not patched afterwards.
 
-## Install
+<p align="center">
+  <img src="./assets/readme/pipeline.svg" width="100%"
+       alt="Key down writes audio.wav to disk immediately; key up sends it to gemini-3.5-transcribe; a validation gate catches a model that answered instead of transcribing; insertion tries typing into a confirmed text field, then a guarded paste, then leaves it on the clipboard. Every outcome lands in History.">
+</p>
 
-1. Download the latest `Jot-x.y.z.dmg` from [Releases](../../releases/latest).
-2. Drag Jot into **Applications** and launch it from there — apps run from a
-   mounted disk image are sandboxed by macOS and the permissions you grant will
-   not stick.
+## Settings
 
-<div align="center">
-<img src="docs/images/installer.png" width="480" alt="Drag Jot to Applications">
-</div>
+<p align="center">
+  <img src="./assets/readme/settings.png" width="660"
+       alt="The Settings window: dictation key picker, microphone picker, and switches for the resting indicator, start with Windows, sounds and double-tap lock.">
+</p>
 
-Setup takes about two minutes and the app walks you through it:
+Pick the key, pick the microphone — a device you choose is never silently swapped for another — and
+decide whether Jot starts with Windows. Recordings are kept for 7 days by default, or never, or
+forever; transcripts stay until you delete them.
 
-1. **Paste a Gemini API key** — get one at
-   [Google AI Studio](https://aistudio.google.com/apikey). It is stored in your
-   macOS Keychain and only ever sent to Google.
-2. **Allow the microphone** — say hello and it advances by itself.
-3. **Allow Accessibility** — macOS requires this for any app that types into
-   another app.
-4. **Hold `fn` and talk.**
+## Ported, not translated
 
-**Cost:** you pay Google for what you dictate at
-[Gemini API pricing](https://ai.google.dev/pricing); a free tier exists and a
-typical dictation is a few seconds of audio. Jot itself is free and has no
-account.
+Each of these is a platform constraint, not a shortcut:
 
-**Model:** Jot runs on Gemini's specialist transcription model,
-`gemini-3.5-transcribe`. Your key needs access to it; setup tells you up front if
-it does not, instead of failing on your first dictation.
+| macOS | Windows | Why |
+| --- | --- | --- |
+| `fn` key | Right Ctrl | `fn` never reaches a Windows keyboard hook. |
+| Hover-to-dictate dot, in-pill Stop | Informational pill; stop from the key or the tray | The pill is click-through and never activates. The alternative eats clicks across the bottom of every screen, or steals focus from the app the text is about to land in. |
+| Liquid Glass pill | Solid elevated surface | Mica is an app-window material; it would tint the whole transparent rect. Nothing here pretends to be glass. |
+| Accessibility API insertion | Typing into a UIA-confirmed control | Windows has no non-destructive insert-at-selection call — `SetValue` replaces a control's entire contents. |
+| CAF + FLAC upload | WAV upload | One fewer encode on the latency path. |
+| Keychain | Credential Manager | Same role, same guarantee. |
+| Secure Input | UIA `IsPassword` + the secure desktop | Same rule: never record over, never paste into, a password field. |
 
-## How it works
-
-```
-fn down ─▶ capture (CAF on disk from t=0) ─▶ fn up ─▶ FLAC ─▶ Gemini transcribe
-                                                                    │
-   cursor ◀─ insert (AX → paste → clipboard) ◀─ [validate ◀─ tone pass] ─┘
-                                              (optional, off by default)
-                                                    │
-                                              History (SQLite)
-```
-
-A few decisions worth knowing about, because they are what make it feel solid:
-
-- **The capture graph is pre-warmed while idle**, so a key press only pays
-  `engine.start()` — 20-40ms instead of 75-150ms. Preparing is not recording: no
-  audio flows and no mic indicator appears until you actually hold the key.
-- **The mic drains one buffer past the stop**, because the audio tap only
-  delivers whole ~100ms chunks and tearing down immediately threw away the tail
-  of your last word.
-- **Insertion is a ladder**: Accessibility API first (no clipboard involved), then
-  a guarded paste that restores your clipboard, then a "copied — press ⌘V" chip.
-  It never blind-pastes into an app that stole focus mid-flight.
-- **A validation gate** guards the optional tone pass, catching the classic failure where the model *answers*
-  your audio instead of transcribing it, and falls back to the raw transcript.
-- **The paths that can lose words are tested.** `JotCore` is a headless Swift
-  package holding the state machine, hotkey grammar, audio, transcription,
-  formatting, insertion and history — so the failure modes above are exercised
-  without launching the app.
-
-The full design specs — including the failure matrix the reliability work is
-built from — are in [docs/design/](docs/design/).
+Known limits, stated rather than hidden: the text fields support IME composition but are not a full
+editor (no undo, no click-to-position caret); clipboard images round-trip but GDI metafiles do not;
+and there is no auto-update server, so new versions are a manual download.
 
 ## Development
 
-Requires macOS 14+, Xcode 16+, and [xcodegen](https://github.com/yonaskolb/XcodeGen).
-The `.xcodeproj` is generated, not checked in.
+Requires Windows 10 or 11 and the toolchain pinned in `rust-toolchain.toml`.
 
-```bash
-brew install xcodegen
-./scripts/build.sh          # xcodegen generate + xcodebuild
-./scripts/test.sh           # swift test on JotCore
-open Jot.xcodeproj          # or work in Xcode
+```powershell
+cargo test                  # 198 tests, headless
+cargo clippy --all-targets  # clean
+./scripts/package.ps1       # release build, staged folder and zip
 ```
 
-Debug builds sign ad-hoc, so a clean clone needs no Apple account, certificate,
-or team membership — `./scripts/build.sh` works as-is. To build under your own
-team instead: `./scripts/build.sh DEVELOPMENT_TEAM=XXXXXXXXXX`. Only release
-builds (`scripts/release.sh`) need a real Developer ID.
+`package.ps1` runs the format, lint and test gates before it builds, and warns loudly when it
+produces an unsigned binary — pass `-CertificateThumbprint` to sign. Jot is portable: no installer,
+data in `%LOCALAPPDATA%\Jot`, and it adds itself to startup only when you turn that on.
 
-```
-App/            menu bar item, HUD pill, windows, design tokens, icon + sounds
-JotCore/        all engine logic, headless and testable
-  HotkeyEngine/     CGEventTap + the pure hold/lock/cancel grammar
-  AudioEngine/      crash-safe CAF capture, device changes, prewarming
-  TranscriptionClient/  Gemini calls, timeouts, retries, FLAC
-  FormattingPipeline/   cleanup prompt, validation gate, dictionary rules
-  InsertionEngine/      the AX → paste → clipboard ladder
-  HistoryStore/         GRDB index, recovery, retry queue, retention
-scripts/        build, test, icon, DMG, release
-docs/           privacy, releasing, design specs, research
-```
-
-Useful while hacking:
-
-```bash
-# every surface is reachable headlessly
-open "jot://settings/about"      # or /general /dictation /privacy /advanced
-open "jot://history"  "jot://dictionary"  "jot://onboarding/5"
-
-# watch it work
-log show --last 5m --info --predicate 'subsystem == "com.ammaar.jot"'
+```text
+crates/jot-core/    the engine, headless and testable
+  hotkey.rs           the low-level-hook key set and the pure hold/lock/cancel grammar
+  audio.rs            crash-safe WASAPI capture, device changes, resampling
+  gemini.rs           the API client: auth, deadlines, status mapping
+  transcription.rs    the pipeline, retries, the vocabulary fail-open
+  validation.rs       the "never insert garbage" gate
+  insertion.rs        the type → paste → clipboard ladder
+  history.rs          the SQLite index and retention
+  recovery.rs         the offline queue and launch-time crash recovery
+  coordinator.rs      the brain
+  win32.rs            foreground app, focus kind, clipboard, synthetic input
+crates/jot/         the GPUI app
+  pill.rs             the HUD and its waveform
+  text_field.rs       the single-line field, including IME composition
+  window_shell.rs     overlay flags, DPI-correct placement, Windows 11 chrome
+  autostart.rs        the per-user Run key
 ```
 
-Transcript text is logged as `private` and never appears in those logs.
+Logging is lifecycle only — transcript text never appears in it — and rolls daily into
+`%LOCALAPPDATA%\Jot\logs`:
 
-### Releasing
-
-`./scripts/release.sh` archives, signs with Developer ID, notarizes, staples,
-and builds the installer DMG. It refuses to produce a shareable DMG that is not
-notarized. See [docs/RELEASING.md](docs/RELEASING.md) for the certificate setup.
+```powershell
+$env:JOT_LOG = "jot=debug,jot_core=debug"; cargo run -p jot
+```
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE). Bundled fonts (Google Sans Flex,
-Google Sans Code) are SIL OFL 1.1. The earcons are original works covered by the
-same Apache 2.0 license. Details in
+Apache 2.0 — see [LICENSE](LICENSE). Bundled fonts (Google Sans Flex, Google Sans Code) are
+SIL OFL 1.1, and the earcons are original works under the same Apache 2.0 licence. Details in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

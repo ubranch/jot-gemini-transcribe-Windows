@@ -1,0 +1,46 @@
+[package]
+name = "jot-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+time.workspace = true
+tracing.workspace = true
+async-trait = "0.1"
+regex = "1"
+base64 = "0.22"
+dirs = "6"
+parking_lot = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs"] }
+cpal = "0.15"
+hound = "3.5"
+rusqlite = { version = "0.32", features = ["bundled", "time"] }
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies.windows]
+version = "0.58"
+features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Threading",
+  "Win32_System_DataExchange",
+  "Win32_System_Memory",
+  "Win32_System_ProcessStatus",
+  "Win32_UI_Accessibility",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Networking_WinInet",
+]
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs"] }

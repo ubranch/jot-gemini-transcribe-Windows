@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img"
+     aria-labelledby="heroTitle heroDesc" width="1200" height="420">
+  <title id="heroTitle">Jot for Windows — hold a key, speak, and the text lands at your cursor</title>
+  <desc id="heroDesc">Dark panel. The name Jot with the line "Hold a key. Speak. It types." beside a
+  drawing of the app's listening pill and its five-bar waveform. Below, the spoken line
+  "let's meet at 1pm — actually, no, make it 2pm" becomes the typed line "Let's meet at 2 PM."</desc>
+
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#131416"/>
+      <stop offset="1" stop-color="#0C0D0F"/>
+    </linearGradient>
+    <clipPath id="round">
+      <rect x="0" y="0" width="1200" height="420" rx="20"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect width="1200" height="420" fill="url(#panel)"/>
+
+    <!-- Motif: the waveform axis, faint, running the width of the panel. -->
+    <line x1="0" y1="152" x2="1200" y2="152" stroke="#4285F4" stroke-opacity="0.10" stroke-width="1"/>
+
+    <!-- Identity -->
+    <text x="64" y="82" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+          font-size="19" letter-spacing="3.4" fill="#5F87D8">WINDOWS · RUST + GPUI</text>
+
+    <text x="62" y="182" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif"
+          font-size="104" font-weight="600" letter-spacing="-3" fill="#F1F3F4">Jot</text>
+
+    <text x="66" y="228" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif"
+          font-size="30" font-weight="400" fill="#BDC1C6">Hold a key. Speak. It types.</text>
+
+    <!-- The app's own pill, drawn to the same geometry it renders. -->
+    <g transform="translate(742 110)">
+      <rect x="0" y="0" width="256" height="84" rx="42" fill="#1E1F20" stroke="#3C4043" stroke-width="1"/>
+      <text x="34" y="49" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+            font-size="21" fill="#9AA0A6">0:04</text>
+      <g fill="#4285F4">
+        <rect x="132" y="29" width="10" height="26" rx="5"/>
+        <rect x="149" y="19" width="10" height="46" rx="5"/>
+        <rect x="166" y="11" width="10" height="62" rx="5"/>
+        <rect x="183" y="22" width="10" height="40" rx="5"/>
+        <rect x="200" y="31" width="10" height="22" rx="5"/>
+      </g>
+    </g>
+
+    <text x="742" y="228" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+          font-size="19" fill="#6B7075">while you hold Right Ctrl</text>
+
+    <line x1="64" y1="262" x2="1136" y2="262" stroke="#2A2C2F" stroke-width="1"/>
+
+    <!-- The mechanism, in the project's own words. -->
+    <text x="64" y="316" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+          font-size="18" letter-spacing="2.6" fill="#6B7075">YOU SAY</text>
+    <text x="196" y="318" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+          font-size="24" fill="#9AA0A6">let's meet at 1pm — actually, no, make it 2pm</text>
+
+    <text x="64" y="372" font-family="Cascadia Code, Consolas, SFMono-Regular, Menlo, monospace"
+          font-size="18" letter-spacing="2.6" fill="#6B7075">JOT TYPES</text>
+    <text x="196" y="376" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif"
+          font-size="34" font-weight="600" fill="#F1F3F4">Let's meet at 2 PM.</text>
+      </g>
+  <rect x="0.5" y="0.5" width="1199" height="419" rx="20" fill="none" stroke="#2A2C2F" stroke-width="1"/>
+</svg>
